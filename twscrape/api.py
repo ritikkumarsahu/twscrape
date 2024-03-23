@@ -1,8 +1,11 @@
+import asyncio
+
 from httpx import Response
 
 from .accounts_pool import AccountsPool
-from .logger import set_log_level
-from .models import Tweet, User, parse_tweet, parse_tweets, parse_user, parse_users
+from .logger import logger, set_log_level
+from .models import (Tweet, User, parse_tweet, parse_tweets, parse_user,
+                     parse_users)
 from .queue_client import QueueClient
 from .utils import encode_params, find_obj, get_by_path
 
@@ -51,7 +54,6 @@ GQL_FEATURES = {  # search values here (view source) https://twitter.com/
 class API:
     # Note: kv is variables, ft is features from original GQL request
     pool: AccountsPool
-
     def __init__(
         self, pool: AccountsPool | str | None = None, debug=False, proxy: str | None = None
     ):
@@ -62,6 +64,7 @@ class API:
         else:
             self.pool = AccountsPool()
 
+        self.sleep_interval = 30
         self.proxy = proxy
         self.debug = debug
         if self.debug:
@@ -114,6 +117,8 @@ class API:
                     return
 
                 yield rep
+                logger.info("sleeping for %d seconds" % self.sleep_interval)
+                await asyncio.sleep(self.sleep_interval)
 
     async def _gql_item(self, op: str, kv: dict, ft: dict | None = None):
         ft = ft or {}
